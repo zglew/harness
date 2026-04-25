@@ -2,12 +2,12 @@ import type { HarnessConfig } from "./schema.js";
 
 export const DEFAULT_CONFIG: HarnessConfig = {
   models: {
-    analyzer: "sonnet",
+    analyzer: "opus",
     researcher: "opus",
     jira_context: "sonnet",
     planner: "opus",
-    implementer: "sonnet",
-    tester: "sonnet",
+    implementer: "opus",
+    tester: "opus",
     verifier: "opus",
   },
   timeouts: {

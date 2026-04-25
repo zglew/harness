@@ -3,12 +3,12 @@ import { z } from "zod";
 export const HarnessConfigSchema = z.object({
   models: z
     .object({
-      analyzer: z.string().default("sonnet"),
+      analyzer: z.string().default("opus"),
       researcher: z.string().default("opus"),
       jira_context: z.string().default("sonnet"),
       planner: z.string().default("opus"),
-      implementer: z.string().default("sonnet"),
-      tester: z.string().default("sonnet"),
+      implementer: z.string().default("opus"),
+      tester: z.string().default("opus"),
       verifier: z.string().default("opus"),
     })
     .default({}),

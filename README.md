@@ -156,10 +156,10 @@ Harness uses 7 specialized agent roles, each with its own system prompt and mode
 | Role | Model | Purpose |
 |------|-------|---------|
 | **Planner** | Opus | Decomposes task into subtasks with dependency graph |
-| **Implementer** | Sonnet | Writes code to fulfill a subtask |
-| **Tester** | Sonnet | Writes and runs tests, reports PASS/FAIL |
+| **Implementer** | Opus | Writes code to fulfill a subtask |
+| **Tester** | Opus | Writes and runs tests, reports PASS/FAIL |
 | **Verifier** | Opus | Confirms acceptance criteria are met |
-| **Analyzer** | Sonnet | Identifies which parts of an existing codebase need research |
+| **Analyzer** | Opus | Identifies which parts of an existing codebase need research |
 | **Researcher** | Opus | Produces deep documentation of a codebase area |
 | **Jira Context** | Sonnet | Fetches ticket details, epics, and linked issues from Jira |
 
@@ -285,12 +285,12 @@ Harness uses [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig) for confi
 ```json
 {
   "models": {
-    "analyzer": "sonnet",
+    "analyzer": "opus",
     "researcher": "opus",
     "jira_context": "sonnet",
     "planner": "opus",
-    "implementer": "sonnet",
-    "tester": "sonnet",
+    "implementer": "opus",
+    "tester": "opus",
     "verifier": "opus"
   },
   "timeouts": {

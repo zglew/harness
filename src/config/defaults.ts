@@ -9,6 +9,7 @@ export const DEFAULT_CONFIG: HarnessConfig = {
     implementer: "opus",
     tester: "opus",
     verifier: "opus",
+    reviewer: "opus",
   },
   timeouts: {
     analyzer: 120,
@@ -18,6 +19,7 @@ export const DEFAULT_CONFIG: HarnessConfig = {
     implementer: 300,
     tester: 600,
     verifier: 600,
+    reviewer: 600,
   },
   maxRetries: 3,
   stateDir: "~/.harness",

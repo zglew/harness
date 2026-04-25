@@ -3,6 +3,7 @@ import { registerRunCommand } from "./commands/run.js";
 import { registerHistoryCommand } from "./commands/history.js";
 import { registerConfigCommand } from "./commands/config.js";
 import { registerDemoCommand } from "./commands/demo.js";
+import { registerGlewReviewCommand } from "./commands/glew-review.js";
 
 const program = new Command();
 
@@ -15,5 +16,6 @@ registerRunCommand(program);
 registerHistoryCommand(program);
 registerConfigCommand(program);
 registerDemoCommand(program);
+registerGlewReviewCommand(program);
 
 program.parse();

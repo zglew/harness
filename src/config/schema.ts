@@ -10,6 +10,7 @@ export const HarnessConfigSchema = z.object({
       implementer: z.string().default("opus"),
       tester: z.string().default("opus"),
       verifier: z.string().default("opus"),
+      reviewer: z.string().default("opus"),
     })
     .default({}),
 
@@ -22,6 +23,7 @@ export const HarnessConfigSchema = z.object({
       implementer: z.number().default(300),
       tester: z.number().default(600),
       verifier: z.number().default(600),
+      reviewer: z.number().default(600),
     })
     .default({}),
 

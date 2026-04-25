@@ -5,6 +5,7 @@ import { Orchestrator } from "../engine/orchestrator.js";
 import { Logger } from "../ui/logger.js";
 import { printHeader } from "../ui/status.js";
 import { printSummary } from "../ui/summary.js";
+import { interactiveReview } from "../ui/review.js";
 import { killAllActive } from "../utils/process.js";
 import type { HarnessEvent, Subtask } from "../state/types.js";
 
@@ -17,6 +18,7 @@ export function registerRunCommand(program: Command): void {
     .option("--no-research", "Skip the research phase")
     .option("--no-jira", "Skip Jira context fetching")
     .option("--dry-run", "Plan only, show subtasks without executing")
+    .option("--auto-approve", "Skip interactive plan review")
     .option("--max-retries <n>", "Override max retries", parseInt)
     .option("--verbose", "Show full agent output")
     .action(async (task: string, opts) => {
@@ -47,6 +49,8 @@ export function registerRunCommand(program: Command): void {
         skipResearch: !opts.research,
         skipJira: !opts.jira,
         dryRun: opts.dryRun,
+        autoApprove: opts.autoApprove,
+        reviewHandler: opts.autoApprove ? undefined : interactiveReview,
       });
 
       orchestrator.on("event", (event: HarnessEvent) => {

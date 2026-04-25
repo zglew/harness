@@ -16,7 +16,7 @@ export async function runPlanner(
   taskDescription: string,
   workDir: string,
   config: HarnessConfig,
-  options?: { researchContext?: string; jiraContext?: string },
+  options?: { researchContext?: string; jiraContext?: string; previousSpec?: string; revisionFeedback?: string },
 ): Promise<Subtask[]> {
   const prompt = buildPlannerPrompt(taskDescription, options);
 

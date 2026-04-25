@@ -125,6 +125,11 @@ export interface DagResult {
   allPassed: boolean;
 }
 
+export type ReviewDecision =
+  | { action: "approve" }
+  | { action: "revise"; feedback: string }
+  | { action: "quit" };
+
 export type HarnessEvent =
   | { type: "phase:start"; phase: string }
   | { type: "agent:start"; role: string; subtaskId?: string }
@@ -133,4 +138,5 @@ export type HarnessEvent =
   | { type: "subtask:done"; subtask: Subtask; success: boolean }
   | { type: "wave:start"; subtasks: Subtask[] }
   | { type: "run:complete"; result: DagResult }
+  | { type: "spec:ready"; specPath: string; revision: number }
   | { type: "log"; message: string };

@@ -6,11 +6,12 @@ Given a task like _"Build a REST API with input validation and database layer"_,
 
 1. **Research** the existing codebase (if any)
 2. **Plan** by decomposing the task into subtasks with a dependency graph
-3. **Implement** each subtask by writing code
-4. **Test** the implementation by writing and running tests
-5. **Verify** that acceptance criteria are met
+3. **Review** — present the plan as a spec for human approval before executing
+4. **Implement** each subtask by writing code
+5. **Test** the implementation by writing and running tests
+6. **Verify** that acceptance criteria are met
 
-Subtasks run in parallel where dependencies allow, retry up to 3 times on failure, and cascade-block downstream tasks when a dependency fails.
+Subtasks run in parallel where dependencies allow, retry up to 3 times on failure, and cascade-block downstream tasks when a dependency fails. Approved specs are saved to the project so you always have a record of what was planned.
 
 ## Prerequisites
 
@@ -47,11 +48,54 @@ harness run "Refactor the database layer" --dry-run
 harness demo
 ```
 
+## Spec Review
+
+After the Planner produces subtasks, Harness generates a human-readable spec and pauses for your review:
+
+```
+  Plan ready (revision 1)
+  Full spec: ~/my-app/.harness/spec-draft.md
+
+  ┌────┬────────────────────────┬───────────┐
+  │ ID │ Title                  │ Depends On│
+  ├────┼────────────────────────┼───────────┤
+  │ 1  │ Create auth middleware │ -         │
+  │ 2  │ Add JWT validation     │ 1         │
+  │ 3  │ Protect API routes     │ 1         │
+  │ 4  │ Integration tests      │ 2, 3      │
+  └────┴────────────────────────┴───────────┘
+
+  [a]pprove  [r]evise  [q]uit >
+```
+
+- **Approve** — saves the spec and begins execution
+- **Revise** — prompts you for feedback, then re-runs the Planner with your notes. The previous plan and your feedback are both passed to the Planner so it can incorporate changes. You can revise as many times as needed.
+- **Quit** — aborts without executing
+
+### Saved Specs
+
+Approved specs are saved to your workspace at `.harness/specs/<run-id>.md`. This gives you a permanent record of what was planned for every run — useful for auditing, debugging failed runs, or revisiting past decisions.
+
+```
+my-app/
+  .harness/
+    specs/
+      run_20260424_153000.md    # approved spec from this run
+      run_20260423_091200.md    # previous run's spec
+    spec-draft.md               # latest draft (overwritten each planning cycle)
+```
+
+Use `--auto-approve` to skip the review step (e.g., in CI or when you trust the Planner):
+
+```bash
+harness run "Fix the login bug" --auto-approve
+```
+
 ## Commands
 
 ### `harness run <task>`
 
-The main command. Takes a natural-language task description and executes the full agent pipeline.
+The main command. Takes a natural-language task description and executes the full agent pipeline. After planning, the CLI presents a spec for review before proceeding to execution.
 
 ```
 Options:
@@ -59,6 +103,7 @@ Options:
   --no-research            Skip the codebase research phase
   --no-jira                Skip Jira context fetching
   --dry-run                Plan only, show subtasks without executing
+  --auto-approve           Skip interactive plan review
   --max-retries <n>        Override max retries (default: 3)
   --verbose                Show full agent output
 ```
@@ -145,6 +190,20 @@ Each agent runs as a separate `claude -p` subprocess with no shared state betwee
               │          Planner          │
               │  (receives Jira context   │
               │   + research documents)   │
+              └─────────────┬─────────────┘
+                            │
+                            ▼
+              ┌───────────────────────────┐
+              │      Spec Review          │
+              │                           │
+              │  [a]pprove  [r]evise      │
+              │       │         │         │
+              │       │    feedback ──┐   │
+              │       │    to Planner │   │
+              │       │    (loop)  ◄──┘   │
+              │       ▼                   │
+              │    Approved               │
+              │  (saved to .harness/specs) │
               └─────────────┬─────────────┘
                             │
                             ▼
@@ -310,7 +369,8 @@ src/
   engine/
     dag.ts                  Generic DAG executor (dependency-aware parallel waves)
     pipeline.ts             Subtask pipeline (implement -> test -> verify + retries)
-    orchestrator.ts         Top-level flow (jira -> research -> plan -> execute)
+    orchestrator.ts         Top-level flow (jira -> research -> plan -> review -> execute)
+    spec.ts                 Spec generation, saving drafts and approved specs
 
   state/
     types.ts                TypeScript interfaces and enums
@@ -326,6 +386,7 @@ src/
     spinner.ts              Ora spinner wrappers for agent calls
     status.ts               Subtask status table display
     summary.ts              Final results table (cli-table3)
+    review.ts               Interactive spec review prompt (approve/revise/quit)
 
   utils/
     jira.ts                 Jira ticket key regex extraction

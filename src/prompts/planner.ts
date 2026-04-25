@@ -19,7 +19,12 @@ Example response:
 
 export function buildPlannerPrompt(
   taskDescription: string,
-  options?: { researchContext?: string; jiraContext?: string },
+  options?: {
+    researchContext?: string;
+    jiraContext?: string;
+    previousSpec?: string;
+    revisionFeedback?: string;
+  },
 ): string {
   let prompt = `Decompose this task into subtasks:\n\n${taskDescription}`;
 
@@ -33,6 +38,13 @@ export function buildPlannerPrompt(
     prompt += `\n\n--- CODEBASE RESEARCH ---\n\n${options.researchContext}`;
     prompt +=
       "\n\nUse the research above to inform your plan. Reference specific files, functions, and patterns found in the research.";
+  }
+
+  if (options?.previousSpec && options?.revisionFeedback) {
+    prompt += `\n\n--- PREVIOUS PLAN (REVISION REQUESTED) ---\n\n${options.previousSpec}`;
+    prompt += `\n\n--- REVIEWER FEEDBACK ---\n\n${options.revisionFeedback}`;
+    prompt +=
+      "\n\nThe reviewer has requested changes to the plan above. Incorporate their feedback and produce an updated set of subtasks. Address every point in the feedback.";
   }
 
   return prompt;

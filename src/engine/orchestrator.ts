@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { EventEmitter } from "node:events";
-import { Phase, type Subtask, type ResearchTopic, type HarnessEvent } from "../state/types.js";
+import { Phase, type Subtask, type ResearchTopic, type HarnessEvent, type ReviewDecision } from "../state/types.js";
 import type { HarnessConfig } from "../config/schema.js";
 import { executeDag } from "./dag.js";
 import { runSubtaskPipeline } from "./pipeline.js";
@@ -12,6 +12,7 @@ import { runJiraContextAgent } from "../agents/jira-context.js";
 import { extractJiraTickets } from "../utils/jira.js";
 import { workspaceHasContent } from "../utils/workspace.js";
 import { StateManager } from "../state/manager.js";
+import { generateSpec, saveDraftSpec, saveSpec } from "./spec.js";
 
 export interface OrchestratorOptions {
   task: string;
@@ -20,6 +21,8 @@ export interface OrchestratorOptions {
   skipResearch?: boolean;
   skipJira?: boolean;
   dryRun?: boolean;
+  autoApprove?: boolean;
+  reviewHandler?: (specPath: string, revision: number) => Promise<ReviewDecision>;
 }
 
 export class Orchestrator extends EventEmitter {
@@ -84,8 +87,9 @@ export class Orchestrator extends EventEmitter {
   }
 
   async run(): Promise<boolean> {
-    const { task, workDir, config, skipResearch, skipJira, dryRun } = this.options;
+    const { task, workDir, config, skipResearch, skipJira, dryRun, autoApprove, reviewHandler } = this.options;
     const startedAt = new Date().toISOString();
+    const runId = `run_${startedAt.replace(/[-T:]/g, "").slice(0, 15)}`;
 
     fs.mkdirSync(workDir, { recursive: true });
 
@@ -130,23 +134,70 @@ export class Orchestrator extends EventEmitter {
       this.log("Skipping research phase (empty or new workspace)");
     }
 
-    // Phase 1: Plan
+    // Phase 1: Plan + Review Loop
     this.emit("event", { type: "phase:start", phase: "planning" } satisfies HarnessEvent);
     this.log("PHASE 1: PLANNING");
 
-    this.subtasks = await runPlanner(task, workDir, config, {
-      researchContext,
-      jiraContext: this.jiraContext,
-    });
+    let revision = 1;
+    let previousSpec: string | undefined;
+    let revisionFeedback: string | undefined;
 
-    this.log(`Planner created ${this.subtasks.length} subtasks:`);
-    for (const st of this.subtasks) {
-      const deps = st.dependsOn.length > 0
-        ? ` (depends on: #${st.dependsOn.join(", #")})`
-        : " (independent)";
-      this.log(`  [${st.id}] ${st.title}${deps}`);
+    while (true) {
+      this.subtasks = await runPlanner(task, workDir, config, {
+        researchContext,
+        jiraContext: this.jiraContext,
+        previousSpec,
+        revisionFeedback,
+      });
+
+      this.log(`Planner created ${this.subtasks.length} subtasks (revision ${revision}):`);
+      for (const st of this.subtasks) {
+        const deps = st.dependsOn.length > 0
+          ? ` (depends on: #${st.dependsOn.join(", #")})`
+          : " (independent)";
+        this.log(`  [${st.id}] ${st.title}${deps}`);
+      }
+      this.writeState();
+
+      // Generate spec
+      const specContent = generateSpec(this.subtasks, {
+        task,
+        workspace: workDir,
+        createdAt: new Date().toISOString(),
+        revision,
+        jiraTickets: this.jiraTickets,
+        researchTopics: this.researchTopics.map((rt) => rt.name),
+      });
+
+      const draftPath = saveDraftSpec(specContent, workDir);
+      this.emit("event", { type: "spec:ready", specPath: draftPath, revision } satisfies HarnessEvent);
+
+      // Review gate
+      if (autoApprove || !reviewHandler) {
+        this.log(autoApprove ? "Auto-approved." : "No review handler — proceeding.");
+        saveSpec(specContent, workDir, runId);
+        break;
+      }
+
+      const decision = await reviewHandler(draftPath, revision);
+
+      if (decision.action === "approve") {
+        this.log("Plan approved by reviewer.");
+        saveSpec(specContent, workDir, runId);
+        break;
+      }
+
+      if (decision.action === "quit") {
+        this.log("Review cancelled — aborting.");
+        return false;
+      }
+
+      // Revise
+      this.log(`Revision requested: ${decision.feedback}`);
+      previousSpec = specContent;
+      revisionFeedback = decision.feedback;
+      revision++;
     }
-    this.writeState();
 
     if (dryRun) {
       this.log("Dry run — stopping after planning.");
@@ -206,7 +257,7 @@ export class Orchestrator extends EventEmitter {
 
     // Save history
     this.stateManager.appendHistory({
-      id: `run_${startedAt.replace(/[-T:]/g, "").slice(0, 15)}`,
+      id: runId,
       prompt: task,
       workspace: workDir,
       startedAt,
